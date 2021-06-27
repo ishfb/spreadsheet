@@ -8,6 +8,7 @@
 #include <optional>
 #include <deque>
 #include <sstream>
+#include <queue>
 
 using namespace std;
 using namespace std::string_literals;
@@ -112,6 +113,11 @@ deque<Node> ReadGraph(istream& input) {
       parent->SetValue(value);
     } else {
       for (const auto& value : children) {
+        if (isdigit(value[0])) {
+          ostringstream msg;
+          msg << "Node " << parent->Name() << " has value " << value << " in its dependencies";
+          throw invalid_argument(msg.str());
+        }
         auto* child = get_node(value);
         parent->AddDependancy(child);
         child->AddDependantNode(parent);
@@ -121,29 +127,79 @@ deque<Node> ReadGraph(istream& input) {
   return nodes;
 }
 
-void CalculateValues(deque<Node>& graph) {}
+void CalculateValues(deque<Node>& graph) {
+  queue<Node*> wait_for_process;
+
+  for (Node& n : graph) {
+    if (n.HasValue()) {
+      for (Node* d : n.DependantNodes()) {
+        if (d->SignalReady(n) == 0) {
+          wait_for_process.push(d);
+        }
+      }
+    }
+  }
+
+  while (!wait_for_process.empty()) {
+    Node* cur = wait_for_process.front();
+    wait_for_process.pop();
+
+    if (cur->HasValue()) {
+      ostringstream msg;
+      msg << "Node " << cur->Name() << " unexpectedly has value " << cur->Value();
+      throw runtime_error(msg.str());
+    }
+    if (cur->DependencyNodes().empty()) {
+      ostringstream msg;
+      msg << "Node " << cur->Name() << " depends on nothing but has no value";
+      throw runtime_error(msg.str());
+    }
+
+    int64_t value = 0;
+    for (const Node* n : cur->DependencyNodes()) {
+      if (!n->HasValue()) {
+        ostringstream msg;
+        msg << "Node " << cur->Name() << " depends on " << n->Name() << " which is still not computed";
+        throw runtime_error(msg.str());
+      }
+      value += n->Value();
+    }
+
+    cur->SetValue(value);
+
+    for (Node* d : cur->DependantNodes()) {
+      if (d->SignalReady(*cur) == 0) {
+        wait_for_process.push(d);
+      }
+    }
+  }
+}
+
+void DebugPrintGraph(const deque<Node>& graph, ostream& output) {
+  for (const Node& node : graph) {
+    output << node.Name() << ": ";
+    if (node.HasValue()) {
+      output << node.Value();
+    } else {
+      output << "[X]";
+    }
+    output << " dependant";
+    for (auto* n : node.DependantNodes()) {
+      output << ' ' << n->Name();
+    }
+    output << '\n';
+  }
+}
 
 int main(int argc, char* argv[]) {
   InputParser input_parser(argc, argv);
 
   auto graph = ReadGraph(input_parser.GetInputStream());
+//  DebugPrintGraph(graph, input_parser.GetOutputStream());
+  CalculateValues(graph);
   for (const Node& node : graph) {
-    input_parser.GetOutputStream() << node.Name() << ": ";
-    if (node.HasValue()) {
-      input_parser.GetOutputStream() << node.Value();
-    } else {
-      input_parser.GetOutputStream() << "[X]";
-    }
-    input_parser.GetOutputStream() << " dependant";
-    for (auto* n : node.DependantNodes()) {
-      input_parser.GetOutputStream() << ' ' << n->Name();
-    }
-    input_parser.GetOutputStream() << '\n';
+    input_parser.GetOutputStream() << node.Name() << " = " << node.Value() << '\n';
   }
-//  CalculateValues(graph);
-//  for (const Node& node : graph.Nodes()) {
-//    input_parser.GetOutputStream() << node.Name() << " = " << node.Value() << '\n';
-//  }
 
   return 0;
 }
