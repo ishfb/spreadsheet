@@ -4,14 +4,20 @@
 #include <fstream>
 #include <unordered_map>
 #include <string_view>
+#include <string>
+#include <optional>
+#include <deque>
+#include <sstream>
 
 using namespace std;
+using namespace std::string_literals;
+using namespace std::string_view_literals;
 
 class InputParser {
 public:
   InputParser(int argc, char* argv[])
-      : input_holder(argc > 1 && string_view(argv[1]) != "-" ? new ifstream(argv[1]) : nullptr),
-        output_holder(argc > 2 && string_view(argv[2]) != "-" ? new ofstream(argv[2]) : nullptr),
+      : input_holder(argc > 1 && argv[1] != "-"sv ? new ifstream(argv[1]) : nullptr),
+        output_holder(argc > 2 && argv[2] != "-"sv ? new ofstream(argv[2]) : nullptr),
         input(input_holder ? *input_holder : cin), output(output_holder ? *output_holder : cout) {
   }
 
@@ -32,25 +38,108 @@ private:
 
 class Node {
 public:
-  string_view Name() const {}
-  int64_t Value() const {}
+  explicit Node(string name) : name_(std::move(name)) {}
+
+  bool HasValue() const { return value_.has_value(); }
+  void SetValue(int64_t value) { value_ = value; }
+
+  void AddDependancy(Node* dest) {
+    dependecies_.push_back(dest);
+    ++wait_for_children;
+  }
+
+  void AddDependantNode(Node* node) {
+    dependant_.push_back(node);
+  }
+
+  const vector<Node*>& DependantNodes() const { return dependant_; }
+  const vector<Node*>& DependencyNodes() const { return dependecies_; }
+
+  string_view Name() const { return name_; }
+  int64_t Value() const { return *value_; }
+
+  int SignalReady(Node& child) {
+    return --wait_for_children;
+  }
+
+private:
+  string name_;
+  optional<int64_t> value_;
+  vector<Node*> dependecies_;
+  vector<Node*> dependant_;
+
+  int wait_for_children = 0;
 };
 
-class Graph {
-public:
-  const vector<Node>& Nodes() const {}
-};
+deque<Node> ReadGraph(istream& input) {
+  deque<Node> nodes;
+  unordered_map<string, Node*> known_nodes;
 
-Graph ReadGraph(istream& input) {
+  auto get_node = [&nodes, &known_nodes](const string& name) {
+    if (auto it = known_nodes.find(name); it == known_nodes.end()) {
+      auto* node_ptr = &nodes.emplace_back(name);
+      known_nodes[name] = node_ptr;
+      return node_ptr;
+    } else {
+      return it->second;
+    }
+  };
 
+  vector<string> children;
+  for (string line; getline(input, line);) {
+    istringstream line_input(line);
+    string node_name;
+    line_input >> node_name;
+    Node* parent = get_node(node_name);
+
+    line_input >> ws;
+    line_input.ignore();
+    line_input >> ws;
+
+    children.clear();
+    for (string value; getline(line_input, value, '+');) {
+      children.push_back(std::move(value));
+    }
+
+    if (children.empty()) {
+      ostringstream msg;
+      msg << "No value for node " << parent->Name() << ". Line is " << line;
+      throw invalid_argument(msg.str());
+    } else if (children.size() == 1 && isdigit(children[0][0])) {
+      istringstream is(children[0]);
+      int64_t value;
+      is >> value;
+      parent->SetValue(value);
+    } else {
+      for (const auto& value : children) {
+        auto* child = get_node(value);
+        parent->AddDependancy(child);
+        child->AddDependantNode(parent);
+      }
+    }
+  }
+  return nodes;
 }
 
-void CalculateValues(Graph& graph) {}
+void CalculateValues(deque<Node>& graph) {}
 
 int main(int argc, char* argv[]) {
   InputParser input_parser(argc, argv);
 
-  Graph graph = ReadGraph(input_parser.GetInputStream());
+  auto graph = ReadGraph(input_parser.GetInputStream());
+  for (const Node& node : graph) {
+    input_parser.GetOutputStream() << node.Name() << ": ";
+    if (node.HasValue()) {
+      input_parser.GetOutputStream() << node.Value();
+    } else {
+      input_parser.GetOutputStream() << "[X]";
+    }
+    input_parser.GetOutputStream() << " dependant";
+    for (auto* n : node.DependantNodes()) {
+      input_parser.GetOutputStream() << ' ' << n->Name();
+    }
+    input_parser.GetOutputStream() << '\n';
+  }
 //  CalculateValues(graph);
 //  for (const Node& node : graph.Nodes()) {
 //    input_parser.GetOutputStream() << node.Name() << " = " << node.Value() << '\n';
