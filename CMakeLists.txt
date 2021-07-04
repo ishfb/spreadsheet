@@ -9,3 +9,4 @@ find_package(Threads REQUIRED)
 add_executable(spreadsheet main.cpp input_parser.cpp input_parser.h)
 target_link_libraries(spreadsheet Threads::Threads)
 
+add_executable(benchmark benchmark.cpp input_parser.cpp input_parser.h)
