@@ -14,52 +14,11 @@
 #include <queue>
 
 #include "input_parser.h"
+#include "graph.h"
 
 using namespace std;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
-
-class Node {
-public:
-  explicit Node(string name) : name_(std::move(name)) {}
-
-  bool HasValue() const { return value_.has_value(); }
-  void SetValue(int64_t value) { value_ = value; }
-
-  void AddDependancy(Node* dest) {
-    dependecies_.push_back(dest);
-    ++wait_for_dependecies_count;
-  }
-
-  void AddDependentNode(Node* node) {
-    dependent_.push_back(node);
-  }
-
-  const vector<Node*>& DependentNodes() const { return dependent_; }
-  const vector<Node*>& DependencyNodes() const { return dependecies_; }
-
-  const string& Name() const { return name_; }
-  int64_t Value() const { return *value_; }
-
-  template<typename Callback>
-  void SignalReady(Callback callback) {
-    for (Node* d : dependent_) {
-      if (int v = --d->wait_for_dependecies_count; v == 0) {
-        callback(*d);
-      } else if (v < 0) {
-        throw std::runtime_error("SignalReady got negative value for node " + d->Name());
-      }
-    }
-  }
-
-private:
-  string name_;
-  optional<int64_t> value_;
-  vector<Node*> dependecies_;
-  vector<Node*> dependent_;
-
-  atomic<int> wait_for_dependecies_count = 0;
-};
 
 deque<Node> ReadGraph(istream& input) {
   deque<Node> nodes;
@@ -115,34 +74,6 @@ deque<Node> ReadGraph(istream& input) {
     }
   }
   return nodes;
-}
-
-int64_t CalculateNodeValue(const Node& cur) {
-  std::chrono::microseconds delay{std::hash<string>()(cur.Name()) % 20};
-  std::this_thread::sleep_for(delay);
-
-  if (cur.HasValue()) {
-    ostringstream msg;
-    msg << "Node " << cur.Name() << " unexpectedly has value " << cur.Value();
-    throw runtime_error(msg.str());
-  }
-  if (cur.DependencyNodes().empty()) {
-    ostringstream msg;
-    msg << "Node " << cur.Name() << " depends on nothing but has no value";
-    throw runtime_error(msg.str());
-  }
-
-  int64_t value = 0;
-  for (const Node* n : cur.DependencyNodes()) {
-    if (!n->HasValue()) {
-      ostringstream msg;
-      msg << "Node " << cur.Name() << " depends on " << n->Name()
-          << " which is still not computed";
-      throw runtime_error(msg.str());
-    }
-    value += n->Value();
-  }
-  return value;
 }
 
 template<typename T>
@@ -251,22 +182,6 @@ void CalculateValuesMT(deque<Node>& graph) {
       }
     }
   }};
-}
-
-void DebugPrintGraph(const deque<Node>& graph, ostream& output) {
-  for (const Node& node : graph) {
-    output << node.Name() << ": ";
-    if (node.HasValue()) {
-      output << node.Value();
-    } else {
-      output << "[X]";
-    }
-    output << " dependent";
-    for (auto* n : node.DependentNodes()) {
-      output << ' ' << n->Name();
-    }
-    output << '\n';
-  }
 }
 
 int main(int argc, char* argv[]) {

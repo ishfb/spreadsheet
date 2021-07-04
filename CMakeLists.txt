@@ -8,8 +8,15 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 find_package(benchmark REQUIRED)
 
-add_executable(spreadsheet main.cpp input_parser.cpp input_parser.h)
+set(SRCS
+    input_parser.h
+    input_parser.cpp
+    graph.h
+    graph.cpp
+)
+
+add_executable(spreadsheet main.cpp ${SRCS})
 target_link_libraries(spreadsheet Threads::Threads)
 
-add_executable(benchmark benchmark.cpp input_parser.cpp input_parser.h)
+add_executable(benchmark benchmark.cpp ${SRCS})
 target_link_libraries(benchmark benchmark::benchmark)
