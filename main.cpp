@@ -67,8 +67,13 @@ public:
   string_view Name() const { return name_; }
   int64_t Value() const { return *value_; }
 
-  int SignalReady(Node& child) {
-    return --wait_for_dependecies_count;
+  template<typename Callback>
+  void SignalReady(Callback callback) {
+    for (Node* d : dependent_) {
+      if (--d->wait_for_dependecies_count == 0) {
+        callback(*d);
+      }
+    }
   }
 
 private:
@@ -164,13 +169,13 @@ int64_t CalculateNodeValue(const Node& cur) {
 void CalculateValuesST(deque<Node>& graph) {
   queue<Node*> wait_for_process;
 
+  auto add_to_queue = [&wait_for_process](Node& node) {
+    wait_for_process.push(&node);
+  };
+
   for (Node& n : graph) {
     if (n.HasValue()) {
-      for (Node* d : n.DependentNodes()) {
-        if (d->SignalReady(n) == 0) {
-          wait_for_process.push(d);
-        }
-      }
+      n.SignalReady(add_to_queue);
     }
   }
 
@@ -179,12 +184,7 @@ void CalculateValuesST(deque<Node>& graph) {
     wait_for_process.pop();
 
     cur->SetValue(CalculateNodeValue(*cur));
-
-    for (Node* d : cur->DependentNodes()) {
-      if (d->SignalReady(*cur) == 0) {
-        wait_for_process.push(d);
-      }
-    }
+    cur->SignalReady(add_to_queue);
   }
 }
 
