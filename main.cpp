@@ -201,6 +201,9 @@ void DebugPrintGraph(const deque<Node>& graph, ostream& output) {
 }
 
 int main(int argc, char* argv[]) {
+  std::ios_base::sync_with_stdio(false);
+  cin.tie(nullptr);
+
   InputParser input_parser(argc, argv);
 
   auto graph = ReadGraph(input_parser.GetInputStream());
