@@ -54,7 +54,7 @@ public:
 
   void AddDependancy(Node* dest) {
     dependecies_.push_back(dest);
-    ++wait_for_children;
+    ++wait_for_dependecies_count;
   }
 
   void AddDependentNode(Node* node) {
@@ -68,7 +68,7 @@ public:
   int64_t Value() const { return *value_; }
 
   int SignalReady(Node& child) {
-    return --wait_for_children;
+    return --wait_for_dependecies_count;
   }
 
 private:
@@ -77,7 +77,7 @@ private:
   vector<Node*> dependecies_;
   vector<Node*> dependent_;
 
-  atomic<int> wait_for_children = 0;
+  atomic<int> wait_for_dependecies_count = 0;
 };
 
 deque<Node> ReadGraph(istream& input) {
