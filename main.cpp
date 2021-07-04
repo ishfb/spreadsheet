@@ -265,7 +265,9 @@ void CalculateValuesMT(deque<Node>& graph) {
     }
   }
 
-  ThreadExecutor executor{4, [&] {
+  int thread_count = std::thread::hardware_concurrency();
+  cerr << "Thread count is " << thread_count << '\n';
+  ThreadExecutor executor{thread_count, [&] {
     while (nodes_left > 0) {
       if (auto item = wait_for_process.Pop(); item) {
         Node* node = item.value();
