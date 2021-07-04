@@ -17,9 +17,11 @@ using namespace std::string_view_literals;
 class InputParser {
 public:
   InputParser(int argc, char* argv[])
-      : input_holder(argc > 1 && argv[1] != "-"sv ? new ifstream(argv[1]) : nullptr),
-        output_holder(argc > 2 && argv[2] != "-"sv ? new ofstream(argv[2]) : nullptr),
-        input(input_holder ? *input_holder : cin), output(output_holder ? *output_holder : cout) {
+      : mode(argc > 1 ? argv[1] : "st"),
+        input_holder(argc > 2 && argv[2] != "-"sv ? new ifstream(argv[2]) : nullptr),
+        output_holder(argc > 3 && argv[3] != "-"sv ? new ofstream(argv[3]) : nullptr),
+        input(input_holder ? *input_holder : cin),
+        output(output_holder ? *output_holder : cout) {
   }
 
   istream& GetInputStream() const {
@@ -30,7 +32,12 @@ public:
     return output;
   }
 
+  const string& GetMode() const {
+    return mode;
+  }
+
 private:
+  string mode;
   unique_ptr<istream> input_holder;
   unique_ptr<ostream> output_holder;
   istream& input;
@@ -115,7 +122,8 @@ deque<Node> ReadGraph(istream& input) {
       for (const auto& value : children) {
         if (isdigit(value[0])) {
           ostringstream msg;
-          msg << "Node " << parent->Name() << " has value " << value << " in its dependencies";
+          msg << "Node " << parent->Name() << " has value " << value
+              << " in its dependencies";
           throw invalid_argument(msg.str());
         }
         auto* child = get_node(value);
@@ -127,7 +135,7 @@ deque<Node> ReadGraph(istream& input) {
   return nodes;
 }
 
-void CalculateValues(deque<Node>& graph) {
+void CalculateValuesST(deque<Node>& graph) {
   queue<Node*> wait_for_process;
 
   for (Node& n : graph) {
@@ -159,7 +167,8 @@ void CalculateValues(deque<Node>& graph) {
     for (const Node* n : cur->DependencyNodes()) {
       if (!n->HasValue()) {
         ostringstream msg;
-        msg << "Node " << cur->Name() << " depends on " << n->Name() << " which is still not computed";
+        msg << "Node " << cur->Name() << " depends on " << n->Name()
+            << " which is still not computed";
         throw runtime_error(msg.str());
       }
       value += n->Value();
@@ -196,7 +205,11 @@ int main(int argc, char* argv[]) {
 
   auto graph = ReadGraph(input_parser.GetInputStream());
 //  DebugPrintGraph(graph, input_parser.GetOutputStream());
-  CalculateValues(graph);
+  if (input_parser.GetMode() == "st") {
+    CalculateValuesST(graph);
+  } else {
+    throw invalid_argument("Unknown mode " + input_parser.GetMode());
+  }
   for (const Node& node : graph) {
     input_parser.GetOutputStream() << node.Name() << " = " << node.Value() << '\n';
   }
