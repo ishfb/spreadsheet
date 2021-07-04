@@ -13,6 +13,10 @@ set(SRCS
     input_parser.cpp
     graph.h
     graph.cpp
+    single_thread.h
+    single_thread.cpp
+    multi_thread_one.h
+    multi_thread_one.cpp
 )
 
 add_executable(spreadsheet main.cpp ${SRCS})
