@@ -1,3 +1,4 @@
+#include <atomic>
 #include <iostream>
 #include <vector>
 #include <memory>
@@ -76,7 +77,7 @@ private:
   vector<Node*> dependecies_;
   vector<Node*> dependent_;
 
-  int wait_for_children = 0;
+  atomic<int> wait_for_children = 0;
 };
 
 deque<Node> ReadGraph(istream& input) {
