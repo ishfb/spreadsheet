@@ -136,6 +136,31 @@ deque<Node> ReadGraph(istream& input) {
   return nodes;
 }
 
+int64_t CalculateNodeValue(const Node& cur) {
+  if (cur.HasValue()) {
+    ostringstream msg;
+    msg << "Node " << cur.Name() << " unexpectedly has value " << cur.Value();
+    throw runtime_error(msg.str());
+  }
+  if (cur.DependencyNodes().empty()) {
+    ostringstream msg;
+    msg << "Node " << cur.Name() << " depends on nothing but has no value";
+    throw runtime_error(msg.str());
+  }
+
+  int64_t value = 0;
+  for (const Node* n : cur.DependencyNodes()) {
+    if (!n->HasValue()) {
+      ostringstream msg;
+      msg << "Node " << cur.Name() << " depends on " << n->Name()
+          << " which is still not computed";
+      throw runtime_error(msg.str());
+    }
+    value += n->Value();
+  }
+  return value;
+}
+
 void CalculateValuesST(deque<Node>& graph) {
   queue<Node*> wait_for_process;
 
@@ -153,29 +178,7 @@ void CalculateValuesST(deque<Node>& graph) {
     Node* cur = wait_for_process.front();
     wait_for_process.pop();
 
-    if (cur->HasValue()) {
-      ostringstream msg;
-      msg << "Node " << cur->Name() << " unexpectedly has value " << cur->Value();
-      throw runtime_error(msg.str());
-    }
-    if (cur->DependencyNodes().empty()) {
-      ostringstream msg;
-      msg << "Node " << cur->Name() << " depends on nothing but has no value";
-      throw runtime_error(msg.str());
-    }
-
-    int64_t value = 0;
-    for (const Node* n : cur->DependencyNodes()) {
-      if (!n->HasValue()) {
-        ostringstream msg;
-        msg << "Node " << cur->Name() << " depends on " << n->Name()
-            << " which is still not computed";
-        throw runtime_error(msg.str());
-      }
-      value += n->Value();
-    }
-
-    cur->SetValue(value);
+    cur->SetValue(CalculateNodeValue(*cur));
 
     for (Node* d : cur->DependentNodes()) {
       if (d->SignalReady(*cur) == 0) {
