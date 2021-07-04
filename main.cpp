@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
-#include <memory>
 #include <fstream>
 #include <mutex>
 #include <thread>
@@ -13,41 +12,12 @@
 #include <deque>
 #include <sstream>
 #include <queue>
-#include <random>
+
+#include "input_parser.h"
 
 using namespace std;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
-
-class InputParser {
-public:
-  InputParser(int argc, char* argv[])
-      : mode(argc > 1 ? argv[1] : "st"),
-        input_holder(argc > 2 && argv[2] != "-"sv ? new ifstream(argv[2]) : nullptr),
-        output_holder(argc > 3 && argv[3] != "-"sv ? new ofstream(argv[3]) : nullptr),
-        input(input_holder ? *input_holder : cin),
-        output(output_holder ? *output_holder : cout) {
-  }
-
-  istream& GetInputStream() const {
-    return input;
-  }
-
-  ostream& GetOutputStream() const {
-    return output;
-  }
-
-  const string& GetMode() const {
-    return mode;
-  }
-
-private:
-  string mode;
-  unique_ptr<istream> input_holder;
-  unique_ptr<ostream> output_holder;
-  istream& input;
-  ostream& output;
-};
 
 class Node {
 public:

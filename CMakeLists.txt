@@ -6,6 +6,6 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
-add_executable(spreadsheet main.cpp)
+add_executable(spreadsheet main.cpp input_parser.cpp input_parser.h)
 target_link_libraries(spreadsheet Threads::Threads)
 
