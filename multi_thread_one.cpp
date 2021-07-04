@@ -83,7 +83,7 @@ void CalculateValuesMT(std::deque<Node>& graph) {
   }
 
   int thread_count = std::thread::hardware_concurrency();
-  std::cerr << "Thread count is " << thread_count << '\n';
+//  std::cerr << "Thread count is " << thread_count << '\n';
   ThreadExecutor executor{thread_count, [&] {
     while (nodes_left > 0) {
       if (auto item = wait_for_process.Pop(); item) {
