@@ -1,8 +1,11 @@
 #include <atomic>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <memory>
 #include <fstream>
+#include <mutex>
+#include <thread>
 #include <unordered_map>
 #include <string_view>
 #include <string>
@@ -64,14 +67,21 @@ public:
   const vector<Node*>& DependentNodes() const { return dependent_; }
   const vector<Node*>& DependencyNodes() const { return dependecies_; }
 
-  string_view Name() const { return name_; }
+  const string& Name() const { return name_; }
   int64_t Value() const { return *value_; }
 
   template<typename Callback>
   void SignalReady(Callback callback) {
     for (Node* d : dependent_) {
-      if (--d->wait_for_dependecies_count == 0) {
+//      if (d->Name() == "A4") {
+//        ostringstream os;
+//        os << this->Name() << " -> " << d->Name() << '\n';
+//        cerr << os.str();
+//      }
+      if (int v = --d->wait_for_dependecies_count; v == 0) {
         callback(*d);
+      } else if (v < 0) {
+        throw std::runtime_error("SignalReady got negative value for node " + d->Name());
       }
     }
   }
@@ -166,6 +176,29 @@ int64_t CalculateNodeValue(const Node& cur) {
   return value;
 }
 
+template<typename T>
+class ThreadSafeQueue {
+public:
+  void Push(T&& value) {
+    lock_guard<mutex> lg(m_);
+    queue_.push(std::move(value));
+  }
+
+  optional<T> Pop() {
+    lock_guard<mutex> lg(m_);
+    if (queue_.empty()) {
+      return std::nullopt;
+    }
+    T result = std::move(queue_.front());
+    queue_.pop();
+    return result;
+  }
+
+private:
+  mutex m_;
+  queue<T> queue_;
+};
+
 void CalculateValuesST(deque<Node>& graph) {
   queue<Node*> wait_for_process;
 
@@ -186,6 +219,67 @@ void CalculateValuesST(deque<Node>& graph) {
     cur->SetValue(CalculateNodeValue(*cur));
     cur->SignalReady(add_to_queue);
   }
+}
+
+class ThreadExecutor {
+public:
+  ThreadExecutor() = default;
+
+  //Starts multiple threads with the same task
+  template<typename... Args>
+  ThreadExecutor(int threadCount, Args&& ... args) {
+    RunMultiple(threadCount, std::forward<Args>(args)...);
+  }
+
+  //Starts a thread
+  template<typename... Args>
+  void Run(Args&& ... args) {
+    threads.emplace_back(std::forward<Args>(args)...);
+  }
+
+  //Starts multiple threads with the same task
+  template<typename... Args>
+  void RunMultiple(int threadCount, Args&& ... args) {
+    for (int i = 0; i < threadCount; ++i) {
+      Run(std::forward<Args>(args)...);
+    }
+  }
+
+  ~ThreadExecutor() {
+    for (auto& thread : threads) {
+      thread.join();
+    }
+  }
+private:
+  std::vector<std::thread> threads;
+};
+
+void CalculateValuesMT(deque<Node>& graph) {
+  ThreadSafeQueue<Node*> wait_for_process;
+  atomic<int> nodes_left = count_if(begin(graph), end(graph), [](const Node& node) {
+    return !node.HasValue();
+  });
+
+  auto add_to_queue = [&wait_for_process](Node& node) {
+    wait_for_process.Push(&node);
+  };
+
+  for (Node& n : graph) {
+    if (n.HasValue()) {
+      n.SignalReady(add_to_queue);
+    }
+  }
+
+  ThreadExecutor executor{4, [&] {
+    while (nodes_left > 0) {
+      if (auto item = wait_for_process.Pop(); item) {
+        Node* node = item.value();
+        node->SetValue(CalculateNodeValue(*node));
+        --nodes_left;
+        node->SignalReady(add_to_queue);
+      }
+    }
+  }};
 }
 
 void DebugPrintGraph(const deque<Node>& graph, ostream& output) {
@@ -214,6 +308,8 @@ int main(int argc, char* argv[]) {
 //  DebugPrintGraph(graph, input_parser.GetOutputStream());
   if (input_parser.GetMode() == "st") {
     CalculateValuesST(graph);
+  } else if (input_parser.GetMode() == "mt") {
+    CalculateValuesMT(graph);
   } else {
     throw invalid_argument("Unknown mode " + input_parser.GetMode());
   }
