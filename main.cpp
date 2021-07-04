@@ -13,6 +13,7 @@
 #include <deque>
 #include <sstream>
 #include <queue>
+#include <random>
 
 using namespace std;
 using namespace std::string_literals;
@@ -147,6 +148,9 @@ deque<Node> ReadGraph(istream& input) {
 }
 
 int64_t CalculateNodeValue(const Node& cur) {
+  std::chrono::microseconds delay{std::hash<string>()(cur.Name()) % 20};
+  std::this_thread::sleep_for(delay);
+
   if (cur.HasValue()) {
     ostringstream msg;
     msg << "Node " << cur.Name() << " unexpectedly has value " << cur.Value();
