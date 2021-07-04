@@ -49,11 +49,11 @@ public:
     ++wait_for_children;
   }
 
-  void AddDependantNode(Node* node) {
-    dependant_.push_back(node);
+  void AddDependentNode(Node* node) {
+    dependent_.push_back(node);
   }
 
-  const vector<Node*>& DependantNodes() const { return dependant_; }
+  const vector<Node*>& DependentNodes() const { return dependent_; }
   const vector<Node*>& DependencyNodes() const { return dependecies_; }
 
   string_view Name() const { return name_; }
@@ -67,7 +67,7 @@ private:
   string name_;
   optional<int64_t> value_;
   vector<Node*> dependecies_;
-  vector<Node*> dependant_;
+  vector<Node*> dependent_;
 
   int wait_for_children = 0;
 };
@@ -120,7 +120,7 @@ deque<Node> ReadGraph(istream& input) {
         }
         auto* child = get_node(value);
         parent->AddDependancy(child);
-        child->AddDependantNode(parent);
+        child->AddDependentNode(parent);
       }
     }
   }
@@ -132,7 +132,7 @@ void CalculateValues(deque<Node>& graph) {
 
   for (Node& n : graph) {
     if (n.HasValue()) {
-      for (Node* d : n.DependantNodes()) {
+      for (Node* d : n.DependentNodes()) {
         if (d->SignalReady(n) == 0) {
           wait_for_process.push(d);
         }
@@ -167,7 +167,7 @@ void CalculateValues(deque<Node>& graph) {
 
     cur->SetValue(value);
 
-    for (Node* d : cur->DependantNodes()) {
+    for (Node* d : cur->DependentNodes()) {
       if (d->SignalReady(*cur) == 0) {
         wait_for_process.push(d);
       }
@@ -183,8 +183,8 @@ void DebugPrintGraph(const deque<Node>& graph, ostream& output) {
     } else {
       output << "[X]";
     }
-    output << " dependant";
-    for (auto* n : node.DependantNodes()) {
+    output << " dependent";
+    for (auto* n : node.DependentNodes()) {
       output << ' ' << n->Name();
     }
     output << '\n';
