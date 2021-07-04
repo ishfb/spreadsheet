@@ -73,11 +73,6 @@ public:
   template<typename Callback>
   void SignalReady(Callback callback) {
     for (Node* d : dependent_) {
-//      if (d->Name() == "A4") {
-//        ostringstream os;
-//        os << this->Name() << " -> " << d->Name() << '\n';
-//        cerr << os.str();
-//      }
       if (int v = --d->wait_for_dependecies_count; v == 0) {
         callback(*d);
       } else if (v < 0) {
