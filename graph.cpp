@@ -1,19 +1,17 @@
-#include "input_parser.h"
+#include "graph.h"
+
 #include <queue>
 #include <sstream>
 #include <deque>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <thread>
 #include <mutex>
-#include <fstream>
 #include <vector>
 #include <iostream>
 #include <algorithm>
 #include <atomic>
-#include "graph.h"
 
 void DebugPrintGraph(const std::deque<Node>& graph, std::ostream& output) {
   for (const Node& node : graph) {
@@ -43,7 +41,7 @@ void Node::AddDependentNode(Node* node) {
 }
 
 int64_t CalculateNodeValue(const Node& cur) {
-  std::chrono::microseconds delay{std::hash<std::__cxx11::string>()(cur.Name()) % 20};
+  std::chrono::microseconds delay{std::hash<std::string>()(cur.Name()) % 20};
   std::this_thread::sleep_for(delay);
 
   if (cur.HasValue()) {
