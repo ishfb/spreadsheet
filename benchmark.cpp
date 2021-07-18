@@ -70,4 +70,10 @@ static void BM_MultiThreadOne(benchmark::State& state) {
 // Register the function as a benchmark
 BENCHMARK(BM_MultiThreadOne)->Arg(100)->Arg(1000)->Arg(10000);
 
+static void BM_MultiThreadTwo(benchmark::State& state) {
+  Run(state, CalculateValuesMtBatches);
+}
+// Register the function as a benchmark
+BENCHMARK(BM_MultiThreadTwo)->Arg(100)->Arg(1000)->Arg(10000);
+
 BENCHMARK_MAIN();
