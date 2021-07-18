@@ -41,7 +41,7 @@ void Node::AddDependentNode(Node* node) {
 }
 
 int64_t CalculateNodeValue(const Node& cur) {
-  std::chrono::microseconds delay{std::hash<std::string>()(cur.Name()) % 20};
+  std::chrono::microseconds delay{std::hash<std::string>()(cur.Name()) % 5};
   std::this_thread::sleep_for(delay);
 
   if (cur.HasValue()) {
