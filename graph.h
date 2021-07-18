@@ -34,6 +34,13 @@ public:
     }
   }
 
+  void Reset() {
+    if (!dependecies_.empty()) {
+      value_.reset();
+      wait_for_dependecies_count = dependecies_.size();
+    }
+  }
+
 private:
   std::string name_;
   std::optional<int64_t> value_;

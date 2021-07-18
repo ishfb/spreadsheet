@@ -40,19 +40,13 @@ deque<Node> BuildRandomGraph(size_t node_count) {
 
 static void BM_SingleThread(benchmark::State& state) {
   size_t node_count = state.range(0);
+  auto graph = BuildRandomGraph(node_count);
 
-  vector<deque<Node>> graphs(5000);
-  for (auto& g : graphs) {
-    g = BuildRandomGraph(node_count);
-  }
-
-  auto cur_graph = graphs.begin();
   for (auto _ : state) {
-    if (cur_graph == graphs.end()) {
-      std::terminate();
+    for (auto& node : graph) {
+      node.Reset();
     }
-    CalculateValuesST(*cur_graph);
-    ++cur_graph;
+    CalculateValuesST(graph);
   }
 }
 // Register the function as a benchmark
@@ -60,19 +54,13 @@ BENCHMARK(BM_SingleThread)->Arg(100)->Arg(1000)->Arg(10000);
 
 static void BM_MultiThreadOne(benchmark::State& state) {
   size_t node_count = state.range(0);
+  auto graph = BuildRandomGraph(node_count);
 
-  vector<deque<Node>> graphs(5000);
-  for (auto& g : graphs) {
-    g = BuildRandomGraph(node_count);
-  }
-
-  auto cur_graph = graphs.begin();
   for (auto _ : state) {
-    if (cur_graph == graphs.end()) {
-      std::terminate();
+    for (auto& node : graph) {
+      node.Reset();
     }
-    CalculateValuesMT(*cur_graph);
-    ++cur_graph;
+    CalculateValuesMT(graph);
   }
 }
 // Register the function as a benchmark
