@@ -6,6 +6,7 @@
 #include "graph.h"
 #include "single_thread.h"
 #include "multi_thread_one.h"
+#include "multi_thread_two_batches.h"
 
 using namespace std;
 
@@ -77,6 +78,8 @@ int main(int argc, char* argv[]) {
     CalculateValuesST(graph);
   } else if (input_parser.GetMode() == "mt") {
     CalculateValuesMT(graph);
+  } else if (input_parser.GetMode() == "mtb") {
+    CalculateValuesMtBatches(graph);
   } else {
     throw invalid_argument("Unknown mode " + input_parser.GetMode());
   }

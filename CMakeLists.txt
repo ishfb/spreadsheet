@@ -17,7 +17,8 @@ set(SRCS
     single_thread.cpp
     multi_thread_one.h
     multi_thread_one.cpp
-)
+    multi_thread_two_batches.h
+    multi_thread_two_batches.cpp)
 
 add_executable(spreadsheet main.cpp ${SRCS})
 target_link_libraries(spreadsheet Threads::Threads)

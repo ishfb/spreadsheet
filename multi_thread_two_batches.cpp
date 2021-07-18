@@ -8,7 +8,6 @@
 #include <vector>
 #include <algorithm>
 #include <atomic>
-#include <iostream>
 
 namespace {
 template<typename T>
@@ -17,6 +16,14 @@ public:
   void Push(T&& value) {
     std::lock_guard<std::mutex> lg(m_);
     queue_.push(std::move(value));
+  }
+
+  template<typename It>
+  void PushMany(It begin, It end) {
+    std::lock_guard<std::mutex> lg(m_);
+    for (auto i = begin; i != end; ++i) {
+      queue_.push(std::move(*i));
+    }
   }
 
   std::optional<T> Pop() {
@@ -66,33 +73,46 @@ public:
 private:
   std::vector<std::thread> threads;
 };
+
 }
 
-void CalculateValuesMT(std::deque<Node>& graph) {
+void CalculateValuesMtBatches(std::deque<Node>& graph) {
   ThreadSafeQueue<Node*> wait_for_process;
   std::atomic<int> nodes_left = count_if(begin(graph), end(graph), [](const Node& node) {
     return !node.HasValue();
   });
 
-  auto add_to_queue = [&wait_for_process](Node& node) {
-    wait_for_process.Push(&node);
-  };
-
   for (Node& n : graph) {
     if (n.HasValue()) {
-      n.SignalReady(add_to_queue);
+      n.SignalReady([&wait_for_process](Node& node) {
+        wait_for_process.Push(&node);
+      });
     }
   }
 
   int thread_count = std::thread::hardware_concurrency();
 //  std::cerr << "Thread count is " << thread_count << '\n';
   ThreadExecutor executor{thread_count, [&] {
+    std::vector<Node*> nodes_to_process;
+
     while (nodes_left > 0) {
       if (auto item = wait_for_process.Pop(); item) {
         Node* node = item.value();
-        node->SetValue(CalculateNodeValue(*node));
-        --nodes_left;
-        node->SignalReady(add_to_queue);
+
+        while (node) {
+          node->SetValue(CalculateNodeValue(*node));
+          --nodes_left;
+          node->SignalReady([&](Node& ready_to_be_processed) {
+            nodes_to_process.push_back(&ready_to_be_processed);
+          });
+
+          if (nodes_to_process.size() > 1) {
+            wait_for_process.PushMany(nodes_to_process.begin() + 1,
+                                      nodes_to_process.end());
+          }
+          node = nodes_to_process.empty() ? nullptr : nodes_to_process.front();
+          nodes_to_process.clear();
+        }
       }
     }
   }};
