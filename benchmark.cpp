@@ -5,6 +5,7 @@
 #include "single_thread.h"
 
 #include <random>
+#include <iostream>
 
 using namespace std;
 
@@ -19,11 +20,15 @@ deque<Node> BuildRandomGraph(size_t node_count) {
 
   uniform_int_distribution<size_t> node_index(0, node_count - 1);
   for (size_t i = 0; i < arc_count; ++i) {
-    size_t first = node_index(rng);
-    size_t second = node_index(rng);
+    size_t first, second;
+    do {
+      first = node_index(rng);
+      second = node_index(rng);
+    } while (first == second);
     if (first > second) {
       swap(first, second);
     }
+
     result[first].AddDependancy(&result[second]);
     result[second].AddDependentNode(&result[first]);
   }
