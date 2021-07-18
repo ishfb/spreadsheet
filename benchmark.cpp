@@ -2,6 +2,7 @@
 
 #include "graph.h"
 #include "multi_thread_one.h"
+#include "multi_thread_two_batches.h"
 #include "single_thread.h"
 
 #include <random>
@@ -43,7 +44,8 @@ deque<Node> BuildRandomGraph(size_t node_count) {
   return result;
 }
 
-static void BM_SingleThread(benchmark::State& state) {
+template <typename TestFunc>
+void Run(benchmark::State& state, TestFunc test_func) {
   size_t node_count = state.range(0);
   auto graph = BuildRandomGraph(node_count);
 
@@ -51,22 +53,19 @@ static void BM_SingleThread(benchmark::State& state) {
     for (auto& node : graph) {
       node.Reset();
     }
-    CalculateValuesST(graph);
+    test_func(graph);
   }
 }
+
+static void BM_SingleThread(benchmark::State& state) {
+  Run(state, CalculateValuesST);
+}
+
 // Register the function as a benchmark
 BENCHMARK(BM_SingleThread)->Arg(100)->Arg(1000)->Arg(10000);
 
 static void BM_MultiThreadOne(benchmark::State& state) {
-  size_t node_count = state.range(0);
-  auto graph = BuildRandomGraph(node_count);
-
-  for (auto _ : state) {
-    for (auto& node : graph) {
-      node.Reset();
-    }
-    CalculateValuesMT(graph);
-  }
+  Run(state, CalculateValuesMT);
 }
 // Register the function as a benchmark
 BENCHMARK(BM_MultiThreadOne)->Arg(100)->Arg(1000)->Arg(10000);
