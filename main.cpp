@@ -1,7 +1,6 @@
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
-#include <thread>
 
 #include "input_parser.h"
 #include "graph.h"
@@ -80,7 +79,7 @@ int main(int argc, char* argv[]) {
   } else if (input_parser.GetMode() == "mt") {
     CalculateValuesMT(graph);
   } else if (input_parser.GetMode() == "mtb") {
-    CalculateValuesMtBatches(graph, std::thread::hardware_concurrency());
+    CalculateValuesMtBatches(graph, input_parser.GetThreadCount());
   } else {
     throw invalid_argument("Unknown mode " + input_parser.GetMode());
   }

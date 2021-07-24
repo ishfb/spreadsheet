@@ -21,10 +21,13 @@ public:
     return mode;
   }
 
+  int GetThreadCount() const { return thread_count; }
+
 private:
   std::string mode;
   std::unique_ptr<std::istream> input_holder;
   std::unique_ptr<std::ostream> output_holder;
+  int thread_count;
   std::istream& input;
   std::ostream& output;
 };
