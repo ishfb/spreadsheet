@@ -84,6 +84,10 @@ int main(int argc, char* argv[]) {
     throw invalid_argument("Unknown mode " + input_parser.GetMode());
   }
   for (const Node& node : graph) {
+    if (!node.HasValue()) {
+      throw std::runtime_error(
+          "Node " + node.Name() + " doesn't have value after processing");
+    }
     input_parser.GetOutputStream() << node.Name() << " = " << node.Value() << '\n';
   }
 
