@@ -44,9 +44,8 @@ deque<Node> BuildRandomGraph(size_t node_count) {
   return result;
 }
 
-template <typename TestFunc>
-void Run(benchmark::State& state, TestFunc test_func) {
-  size_t node_count = state.range(0);
+template<typename TestFunc>
+void Run(benchmark::State& state, size_t node_count, TestFunc test_func) {
   auto graph = BuildRandomGraph(node_count);
 
   for (auto _ : state) {
@@ -58,22 +57,31 @@ void Run(benchmark::State& state, TestFunc test_func) {
 }
 
 static void BM_SingleThread(benchmark::State& state) {
-  Run(state, CalculateValuesST);
+  Run(state, state.range(0), CalculateValuesST);
 }
 
 // Register the function as a benchmark
-BENCHMARK(BM_SingleThread)->Arg(100)->Arg(1000)->Arg(10000);
+//BENCHMARK(BM_SingleThread)->RangeMultiplier(100)->Range(100, 1'000'000);
 
 static void BM_MultiThreadOne(benchmark::State& state) {
-  Run(state, CalculateValuesMT);
+  Run(state, state.range(0), CalculateValuesMT);
 }
 // Register the function as a benchmark
-BENCHMARK(BM_MultiThreadOne)->Arg(100)->Arg(1000)->Arg(10000);
+//BENCHMARK(BM_MultiThreadOne)->Arg(100)->Arg(1000)->Arg(10000)->Arg(1'000'000);
 
 static void BM_MultiThreadTwo(benchmark::State& state) {
-  Run(state, CalculateValuesMtBatches);
+  Run(state, state.range(1),
+      [tc = state.range(0)](auto&& graph) { CalculateValuesMtBatches(graph, tc); });
 }
 // Register the function as a benchmark
-BENCHMARK(BM_MultiThreadTwo)->Arg(100)->Arg(1000)->Arg(10000);
+//BENCHMARK(BM_MultiThreadTwo)->Args({128, 1'000'000});
+BENCHMARK(BM_MultiThreadTwo)
+->ArgsProduct({{4, 8, 12, 16, 24, 32, 64, 96, 128},
+               benchmark::CreateRange(10'000, 1'000'000, 100),
+              });
+//BENCHMARK(BM_MultiThreadTwo)
+//->ArgsProduct({{64, 96, 128, 160, 192},
+//               {1'000'000},
+//              });
 
 BENCHMARK_MAIN();

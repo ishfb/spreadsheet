@@ -76,7 +76,7 @@ private:
 
 }
 
-void CalculateValuesMtBatches(std::deque<Node>& graph) {
+void CalculateValuesMtBatches(std::deque<Node>& graph, int thread_count) {
   ThreadSafeQueue<Node*> wait_for_process;
   std::atomic<int> nodes_left = count_if(begin(graph), end(graph), [](const Node& node) {
     return !node.HasValue();
@@ -90,8 +90,6 @@ void CalculateValuesMtBatches(std::deque<Node>& graph) {
     }
   }
 
-  int thread_count = std::thread::hardware_concurrency();
-//  std::cerr << "Thread count is " << thread_count << '\n';
   ThreadExecutor executor{thread_count, [&] {
     std::vector<Node*> nodes_to_process;
 
