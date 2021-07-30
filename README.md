@@ -232,6 +232,47 @@ BM_MultiThreadTwo/512/1000000  451327446 ns     68729726 ns     21,97
 
 Вот здесь явно виден contention. В некоторых тредах картина немного отличается, но в среднем треды проводят 40% времени, ожидая мьютекс. Этот contention стоит попробовать снизить.
 
+### Повод подумать
+
+```
+/home/ishfb/code/spreadsheet/cmake-build-release/benchmark
+2021-07-30T21:12:47+03:00
+Running /home/ishfb/code/spreadsheet/cmake-build-release/benchmark
+Run on (12 X 3950.72 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 256 KiB (x6)
+  L3 Unified 12288 KiB (x1)
+Load Average: 0.73, 0.60, 0.65
+--------------------------------------------------------------------------
+Benchmark                                Time             CPU   Iterations
+--------------------------------------------------------------------------
+BM_MultiThreadTwo/64/10000        43440558 ns      1290578 ns          100
+BM_MultiThreadTwo/96/10000        83301210 ns      1862511 ns          100
+BM_MultiThreadTwo/128/10000      112976239 ns      2460450 ns          100
+BM_MultiThreadTwo/256/10000      183359273 ns      4832319 ns          100
+BM_MultiThreadTwo/320/10000      187017435 ns      5944167 ns          117
+BM_MultiThreadTwo/64/1000000     616181140 ns     62649993 ns           11
+BM_MultiThreadTwo/96/1000000     493116493 ns     63177699 ns           11
+BM_MultiThreadTwo/128/1000000    440103043 ns     63735249 ns           11
+BM_MultiThreadTwo/256/1000000    402344611 ns     65972157 ns           11
+BM_MultiThreadTwo/320/1000000    401730530 ns     67988334 ns           10
+BM_MultiThreadThree/64/10000      12030165 ns      1308299 ns          537
+BM_MultiThreadThree/96/10000      47024828 ns      1875291 ns          100
+BM_MultiThreadThree/128/10000     78205789 ns      2475460 ns          100
+BM_MultiThreadThree/256/10000     59002981 ns      4819786 ns          100
+BM_MultiThreadThree/320/10000     40525460 ns      5889576 ns          117
+BM_MultiThreadThree/64/1000000   613088504 ns     62917152 ns           11
+BM_MultiThreadThree/96/1000000   493710274 ns     62985075 ns           11
+BM_MultiThreadThree/128/1000000  449409039 ns     63647684 ns           11
+BM_MultiThreadThree/256/1000000  416271716 ns     67062698 ns           11
+BM_MultiThreadThree/320/1000000  412646388 ns     68171604 ns           10
+
+Process finished with exit code 0
+
+```
+
 ## Как проводить измерения
 
 ```bash
