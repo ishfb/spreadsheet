@@ -7,6 +7,7 @@
 #include "single_thread.h"
 #include "multi_thread_one.h"
 #include "multi_thread_two_batches.h"
+#include "multi_thread_three_work_stealing_queue.h"
 
 using namespace std;
 
@@ -80,6 +81,8 @@ int main(int argc, char* argv[]) {
     CalculateValuesMT(graph);
   } else if (input_parser.GetMode() == "mtb") {
     CalculateValuesMtBatches(graph, input_parser.GetThreadCount());
+  } else if (input_parser.GetMode() == "mt_ws") {
+    CalculateValuesMtWorkStealing(graph, input_parser.GetThreadCount());
   } else {
     throw invalid_argument("Unknown mode " + input_parser.GetMode());
   }
