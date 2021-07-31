@@ -20,10 +20,12 @@ set(SRCS
     multi_thread_two_batches.h
     multi_thread_two_batches.cpp
     multi_thread_three_work_stealing_queue.h
-    multi_thread_three_work_stealing_queue.cpp)
+    multi_thread_three_work_stealing_queue.cpp
+    multi_thread_four_lf.h
+    multi_thread_four_lf.cpp)
 
 add_executable(spreadsheet main.cpp ${SRCS})
 target_link_libraries(spreadsheet Threads::Threads)
 
-add_executable(benchmark benchmark.cpp ${SRCS})
+add_executable(benchmark benchmark.cpp ${SRCS} multi_thread_four_lf.h multi_thread_four_lf.cpp)
 target_link_libraries(benchmark benchmark::benchmark)
