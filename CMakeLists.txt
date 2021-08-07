@@ -22,7 +22,8 @@ set(SRCS
     multi_thread_three_work_stealing_queue.h
     multi_thread_three_work_stealing_queue.cpp
     multi_thread_four_lf.h
-    multi_thread_four_lf.cpp)
+    multi_thread_four_lf.cpp
+    concurrentqueue.h)
 
 add_executable(spreadsheet main.cpp ${SRCS})
 target_link_libraries(spreadsheet Threads::Threads)

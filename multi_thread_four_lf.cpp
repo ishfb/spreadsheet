@@ -10,38 +10,11 @@
 #include <atomic>
 #include <iostream>
 #include <memory>
+#include "concurrentqueue.h"
 
 using namespace std;
 
 namespace {
-template<typename T>
-class ThreadSafeLifo {
-public:
-  void Push(T&& value) {
-    auto* node = new Node{std::move(value), head_.load()};
-    while (!head_.compare_exchange_strong(node->next, node)) {
-    }
-  }
-
-  std::optional<T> Pop() {
-    Node* cur_head = head_.load();
-    while (cur_head && !head_.compare_exchange_strong(cur_head, cur_head->next)) {
-    }
-    if (cur_head) {
-      dispose_.template emplace_back(cur_head);
-      return std::move(cur_head->value);
-    }
-    return std::nullopt;
-  }
-
-private:
-  struct Node {
-    T value;
-    Node* next;
-  };
-  std::atomic<Node*> head_{nullptr};
-  vector<unique_ptr<Node>> dispose_;
-};
 
 class ThreadExecutor {
 public:
@@ -78,28 +51,39 @@ private:
 }
 
 void CalculateValuesMtLockFree(std::deque<Node>& graph, int thread_count) {
-  ThreadSafeLifo<Node*> wait_for_process;
+  ::moodycamel::ConcurrentQueue<Node*> wait_for_process;
   std::atomic<int> nodes_left = count_if(begin(graph), end(graph), [](const Node& node) {
     return !node.HasValue();
   });
 
-  auto add_to_queue = [&wait_for_process](Node& node) {
-    wait_for_process.Push(&node);
-  };
-
   for (Node& n : graph) {
     if (n.HasValue()) {
-      n.SignalReady(add_to_queue);
+      n.SignalReady([&wait_for_process](Node& node) {
+        wait_for_process.enqueue(&node);
+      });
     }
   }
 
   ThreadExecutor executor{thread_count, [&] {
+    moodycamel::ProducerToken prod_token(wait_for_process);
+    moodycamel::ConsumerToken cons_token(wait_for_process);
+    std::vector<Node*> nodes_to_process;
+
     while (nodes_left > 0) {
-      if (auto item = wait_for_process.Pop(); item) {
-        Node* node = item.value();
-        node->SetValue(CalculateNodeValue(*node));
-        --nodes_left;
-        node->SignalReady(add_to_queue);
+      if (Node* node; wait_for_process.try_dequeue(cons_token, node)) {
+        while (node) {
+          node->SetValue(CalculateNodeValue(*node));
+          --nodes_left;
+          node->SignalReady([&](Node& ready_to_be_processed) {
+            nodes_to_process.push_back(&ready_to_be_processed);
+          });
+          if (nodes_to_process.size() > 1) {
+            wait_for_process.enqueue_bulk(prod_token, nodes_to_process.begin() + 1,
+                                          nodes_to_process.size() - 1);
+          }
+          node = nodes_to_process.empty() ? nullptr : nodes_to_process.front();
+          nodes_to_process.clear();
+        }
       }
     }
   }};
