@@ -267,6 +267,8 @@ BM_MultiThreadThree/64/1000000   613088504 ns     62917152 ns           11
 BM_MultiThreadThree/96/1000000   493710274 ns     62985075 ns           11
 BM_MultiThreadThree/128/1000000  449409039 ns     63647684 ns           11
 BM_MultiThreadThree/256/1000000  416271716 ns     67062698 ns           11
+BM_MultiThreadFour/256/1000000   366349341 ns     67110515 ns           11
+
 BM_MultiThreadThree/320/1000000  412646388 ns     68171604 ns           10
 
 Process finished with exit code 0
@@ -293,3 +295,58 @@ sys	0m0,208s
 ## Текущий статус
 
 MultiThreadTwoBatches работает за то же время, что и MultiThreadOne. При этом в его профиле я не вижу, чтобы треды страдали от contention - 72% времени они занимаются подсчётом значения вершины.  
+
+## Результаты финальных измерений
+
+/home/ishfb/code/spreadsheet/cmake-build-release/benchmark
+2021-08-09T12:41:37+03:00
+Running /home/ishfb/code/spreadsheet/cmake-build-release/benchmark
+Run on (12 X 3927.72 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 256 KiB (x6)
+  L3 Unified 12288 KiB (x1)
+Load Average: 2.18, 7.74, 4.86
+--------------------------------------------------------------------------
+Benchmark                                Time             CPU   Iterations
+--------------------------------------------------------------------------
+BM_SingleThread/100                3070499 ns        59731 ns         1000
+BM_SingleThread/10000            325972557 ns      6582379 ns           10
+BM_SingleThread/1000000         39175909453 ns   1199626704 ns            1
+BM_MultiThreadOne/100               626509 ns       180603 ns         3849
+BM_MultiThreadOne/1000             2740442 ns       186977 ns         1000
+BM_MultiThreadOne/10000           27821107 ns       443176 ns          100
+BM_MultiThreadOne/1000000       3377339382 ns     56792805 ns            1
+BM_MultiThreadTwo/64/10000        44076507 ns      1254516 ns          100
+BM_MultiThreadTwo/96/10000        80962154 ns      1757622 ns          100
+BM_MultiThreadTwo/128/10000      112227618 ns      2349964 ns          100
+BM_MultiThreadTwo/256/10000      180947092 ns      4603333 ns          100
+BM_MultiThreadTwo/320/10000      189560039 ns      5676955 ns          123
+BM_MultiThreadTwo/64/1000000     605014737 ns     62570456 ns           11
+BM_MultiThreadTwo/96/1000000     480468077 ns     63009257 ns           11
+BM_MultiThreadTwo/128/1000000    427856664 ns     63553556 ns           11
+BM_MultiThreadTwo/256/1000000    385885706 ns     65443285 ns           11
+BM_MultiThreadTwo/320/1000000    380470911 ns     67240556 ns           11
+BM_MultiThreadThree/64/10000      10361712 ns      1204652 ns          572
+BM_MultiThreadThree/96/10000      42768310 ns      1717043 ns          100
+BM_MultiThreadThree/128/10000     89142739 ns      2286593 ns          100
+BM_MultiThreadThree/256/10000     68365592 ns      4450471 ns          100
+BM_MultiThreadThree/320/10000     42265697 ns      5436026 ns          128
+BM_MultiThreadThree/64/1000000   597903506 ns     63236668 ns           11
+BM_MultiThreadThree/96/1000000   474134817 ns     63598775 ns           11
+BM_MultiThreadThree/128/1000000  436311345 ns     63944414 ns           11
+BM_MultiThreadThree/256/1000000  364880213 ns     67724616 ns           11
+BM_MultiThreadThree/320/1000000  387112069 ns     69700351 ns           10
+BM_MultiThreadFour/64/10000        6579564 ns      1031378 ns          685
+BM_MultiThreadFour/96/10000        5548252 ns      1431726 ns          491
+BM_MultiThreadFour/128/10000       5488744 ns      1897883 ns          370
+BM_MultiThreadFour/256/10000       7587288 ns      3937570 ns          177
+BM_MultiThreadFour/320/10000       9021093 ns      5257087 ns          135
+BM_MultiThreadFour/64/1000000    597630071 ns     76212218 ns           11
+BM_MultiThreadFour/96/1000000    458763186 ns     65961483 ns           11
+BM_MultiThreadFour/128/1000000   390270721 ns     64871787 ns            9
+BM_MultiThreadFour/256/1000000   311426226 ns     68358147 ns           11
+BM_MultiThreadFour/320/1000000   326435317 ns     68407463 ns           10
+
+Process finished with exit code 0

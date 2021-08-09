@@ -63,57 +63,42 @@ static void BM_SingleThread(benchmark::State& state) {
 }
 
 // Register the function as a benchmark
-//BENCHMARK(BM_SingleThread)->RangeMultiplier(100)->Range(100, 1'000'000);
+BENCHMARK(BM_SingleThread)->RangeMultiplier(100)->Range(100, 1'000'000);
 
 static void BM_MultiThreadOne(benchmark::State& state) {
   Run(state, state.range(0), CalculateValuesMT);
 }
 // Register the function as a benchmark
-//BENCHMARK(BM_MultiThreadOne)->Arg(100)->Arg(1000)->Arg(10000)->Arg(1'000'000);
+BENCHMARK(BM_MultiThreadOne)->Arg(100)->Arg(1000)->Arg(10000)->Arg(1'000'000);
 
 static void BM_MultiThreadTwo(benchmark::State& state) {
   Run(state, state.range(1),
       [tc = state.range(0)](auto&& graph) { CalculateValuesMtBatches(graph, tc); });
 }
 // Register the function as a benchmark
-//BENCHMARK(BM_MultiThreadTwo)->Args({128, 1'000'000});
-//BENCHMARK(BM_MultiThreadTwo)
-//->ArgsProduct({{64, 96, 128, 256, 320},
-//               benchmark::CreateRange(10'000, 1'000'000, 100),
-//               });
-//BENCHMARK(BM_MultiThreadTwo)
-//->ArgsProduct({{64, 96, 128, 160, 192},
-//               {1'000'000},
-//              });
+BENCHMARK(BM_MultiThreadTwo)
+->ArgsProduct({{64, 96, 128, 256, 320},
+               benchmark::CreateRange(10'000, 1'000'000, 100),
+               });
 
 static void BM_MultiThreadThree(benchmark::State& state) {
   Run(state, state.range(1),
       [tc = state.range(0)](auto&& graph) { CalculateValuesMtWorkStealing(graph, tc); });
 }
 // Register the function as a benchmark
-//BENCHMARK(BM_MultiThreadTwo)->Args({128, 1'000'000});
-//BENCHMARK(BM_MultiThreadThree)
-//->ArgsProduct({{64, 96, 128, 256, 320},
-//               benchmark::CreateRange(10'000, 1'000'000, 100),
-//               });
-//BENCHMARK(BM_MultiThreadTwo)
-//->ArgsProduct({{64, 96, 128, 160, 192},
-//               {1'000'000},
-//              });
+BENCHMARK(BM_MultiThreadThree)
+->ArgsProduct({{64, 96, 128, 256, 320},
+               benchmark::CreateRange(10'000, 1'000'000, 100),
+               });
 
 static void BM_MultiThreadFour(benchmark::State& state) {
   Run(state, state.range(1),
       [tc = state.range(0)](auto&& graph) { CalculateValuesMtLockFree(graph, tc); });
 }
 // Register the function as a benchmark
-//BENCHMARK(BM_MultiThreadTwo)->Args({128, 1'000'000});
 BENCHMARK(BM_MultiThreadFour)
 ->ArgsProduct({{64, 96, 128, 256, 320},
                benchmark::CreateRange(10'000, 1'000'000, 100),
                });
-//BENCHMARK(BM_MultiThreadTwo)
-//->ArgsProduct({{64, 96, 128, 160, 192},
-//               {1'000'000},
-//              });
 
 BENCHMARK_MAIN();
