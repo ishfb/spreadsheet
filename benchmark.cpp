@@ -4,6 +4,7 @@
 #include "multi_thread_one.h"
 #include "multi_thread_two_batches.h"
 #include "multi_thread_three_work_stealing_queue.h"
+#include "multi_thread_four_lf.h"
 #include "single_thread.h"
 
 #include <random>
@@ -76,10 +77,10 @@ static void BM_MultiThreadTwo(benchmark::State& state) {
 }
 // Register the function as a benchmark
 //BENCHMARK(BM_MultiThreadTwo)->Args({128, 1'000'000});
-BENCHMARK(BM_MultiThreadTwo)
-->ArgsProduct({{64, 96, 128, 256, 320},
-               benchmark::CreateRange(10'000, 1'000'000, 100),
-               });
+//BENCHMARK(BM_MultiThreadTwo)
+//->ArgsProduct({{64, 96, 128, 256, 320},
+//               benchmark::CreateRange(10'000, 1'000'000, 100),
+//               });
 //BENCHMARK(BM_MultiThreadTwo)
 //->ArgsProduct({{64, 96, 128, 160, 192},
 //               {1'000'000},
@@ -91,7 +92,22 @@ static void BM_MultiThreadThree(benchmark::State& state) {
 }
 // Register the function as a benchmark
 //BENCHMARK(BM_MultiThreadTwo)->Args({128, 1'000'000});
-BENCHMARK(BM_MultiThreadThree)
+//BENCHMARK(BM_MultiThreadThree)
+//->ArgsProduct({{64, 96, 128, 256, 320},
+//               benchmark::CreateRange(10'000, 1'000'000, 100),
+//               });
+//BENCHMARK(BM_MultiThreadTwo)
+//->ArgsProduct({{64, 96, 128, 160, 192},
+//               {1'000'000},
+//              });
+
+static void BM_MultiThreadFour(benchmark::State& state) {
+  Run(state, state.range(1),
+      [tc = state.range(0)](auto&& graph) { CalculateValuesMtLockFree(graph, tc); });
+}
+// Register the function as a benchmark
+//BENCHMARK(BM_MultiThreadTwo)->Args({128, 1'000'000});
+BENCHMARK(BM_MultiThreadFour)
 ->ArgsProduct({{64, 96, 128, 256, 320},
                benchmark::CreateRange(10'000, 1'000'000, 100),
                });

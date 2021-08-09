@@ -70,20 +70,23 @@ void CalculateValuesMtLockFree(std::deque<Node>& graph, int thread_count) {
     std::vector<Node*> nodes_to_process;
 
     while (nodes_left > 0) {
-      if (Node* node; wait_for_process.try_dequeue(cons_token, node)) {
-        while (node) {
-          node->SetValue(CalculateNodeValue(*node));
-          --nodes_left;
-          node->SignalReady([&](Node& ready_to_be_processed) {
-            nodes_to_process.push_back(&ready_to_be_processed);
-          });
-          if (nodes_to_process.size() > 1) {
-            wait_for_process.enqueue_bulk(prod_token, nodes_to_process.begin() + 1,
-                                          nodes_to_process.size() - 1);
-          }
-          node = nodes_to_process.empty() ? nullptr : nodes_to_process.front();
-          nodes_to_process.clear();
+      Node* node = nullptr;
+      for (size_t i = 0; i < 10 && !wait_for_process.try_dequeue(cons_token, node); ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1 << i));
+      }
+
+      while (node) {
+        node->SetValue(CalculateNodeValue(*node));
+        --nodes_left;
+        node->SignalReady([&](Node& ready_to_be_processed) {
+          nodes_to_process.push_back(&ready_to_be_processed);
+        });
+        if (nodes_to_process.size() > 1) {
+          wait_for_process.enqueue_bulk(prod_token, nodes_to_process.begin() + 1,
+                                        nodes_to_process.size() - 1);
         }
+        node = nodes_to_process.empty() ? nullptr : nodes_to_process.front();
+        nodes_to_process.clear();
       }
     }
   }};
