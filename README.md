@@ -14,6 +14,15 @@
    3. Проходим по всем входящим рёбрам и делаем то же самое, что и на шаге 3. 
 5. Если очередь опустела, значит, значения для всех вершин посчитаны    
 
+# Итоги работы
+
+1. Самая быстрая полностью написанная мной реализация - [multi_thread_two_batches.cpp](./multi_thread_two_batches.cpp). Она использует мьютексы и подробно описана ниже в шаге 5. 
+2. Lock-free реализация использует очередь [MoodyCamel](https://github.com/cameron314/concurrentqueue), она оказалась на 19% быстрее моей реализации multi_thread_two_batches - [multi_thread_four_lf.cpp](./multi_thread_four_lf.cpp). 
+
+Именно из-за того, что прирост от использования lock-free заметный, но не кратный я отказался от реализации собственной lock-free очереди, потому что моя очередь, написанная с нуля вряд ли сможет догнать готовую, в которую вложено немало человеко-часов. Так что в итоге я здесь осознанно отклонился от постановки задачи (не использовать сторонние библиотеки). Ниже, в шаге 9, я описываю, почему принял такое решение.
+
+Далее по шагам идёт описание моего пути выполнения задания.  
+
 # Ход работы
 
 ## Описание общих деталей реализации
@@ -232,48 +241,132 @@ BM_MultiThreadTwo/512/1000000  451327446 ns     68729726 ns     21,97
 
 Вот здесь явно виден contention. В некоторых тредах картина немного отличается, но в среднем треды проводят 40% времени, ожидая мьютекс. Этот contention стоит попробовать снизить.
 
-### Повод подумать
+## Шаг 8 - пробую снизить contention, добавив в очередь work-stealing.
+
+Переделываю очередь следующим образом (см. [multi_thread_three_work_stealing_queue.cpp](./multi_thread_three_work_stealing_queue.cpp)):
+* каждому треду даю свою отдельную очередь, в которую он добавляет задания, и из которой извлекает
+* если тред не смог достать задание из своей очереди, он обходит очереди других тредов и пытается забрать задание у них
+* очереди тредов синхронизируются через mutex
+
+Идея в том, что до этого все треды ломились в один и тот же мьютекс, теперь они обращаются каждый к своему и иногда к другим. Должны получиться более гранулярные блокировки, и это должно снизить contention.
+
+Запускаем benchmark, сравнивая получившуюся реализацию (BM_MultiThreadThree) с предыдущей - BM_MultiThreadTwo: 
 
 ```
-/home/ishfb/code/spreadsheet/cmake-build-release/benchmark
-2021-07-30T21:12:47+03:00
-Running /home/ishfb/code/spreadsheet/cmake-build-release/benchmark
-Run on (12 X 3950.72 MHz CPU s)
-CPU Caches:
-  L1 Data 32 KiB (x6)
-  L1 Instruction 32 KiB (x6)
-  L2 Unified 256 KiB (x6)
-  L3 Unified 12288 KiB (x1)
-Load Average: 0.73, 0.60, 0.65
---------------------------------------------------------------------------
 Benchmark                                Time             CPU   Iterations
 --------------------------------------------------------------------------
+BM_MultiThreadTwo/4/10000         90070249 ns       933818 ns          100
+BM_MultiThreadTwo/8/10000         46100368 ns      1240137 ns          100
+BM_MultiThreadTwo/16/10000        18799224 ns       723138 ns          934
+BM_MultiThreadTwo/24/10000        12292196 ns       838651 ns         1108
+BM_MultiThreadTwo/32/10000         9695942 ns       860625 ns          768
 BM_MultiThreadTwo/64/10000        43440558 ns      1290578 ns          100
 BM_MultiThreadTwo/96/10000        83301210 ns      1862511 ns          100
 BM_MultiThreadTwo/128/10000      112976239 ns      2460450 ns          100
 BM_MultiThreadTwo/256/10000      183359273 ns      4832319 ns          100
 BM_MultiThreadTwo/320/10000      187017435 ns      5944167 ns          117
-BM_MultiThreadTwo/64/1000000     616181140 ns     62649993 ns           11
-BM_MultiThreadTwo/96/1000000     493116493 ns     63177699 ns           11
-BM_MultiThreadTwo/128/1000000    440103043 ns     63735249 ns           11
-BM_MultiThreadTwo/256/1000000    402344611 ns     65972157 ns           11
-BM_MultiThreadTwo/320/1000000    401730530 ns     67988334 ns           10
+
+BM_MultiThreadThree/4/10000       91200565 ns      1012644 ns          100
+BM_MultiThreadThree/8/10000       46689517 ns       991916 ns          100
+BM_MultiThreadThree/16/10000      19436456 ns       799340 ns          854
+BM_MultiThreadThree/24/10000      14029025 ns      1142376 ns          990
+BM_MultiThreadThree/32/10000       9842682 ns       931137 ns          833
 BM_MultiThreadThree/64/10000      12030165 ns      1308299 ns          537
 BM_MultiThreadThree/96/10000      47024828 ns      1875291 ns          100
 BM_MultiThreadThree/128/10000     78205789 ns      2475460 ns          100
 BM_MultiThreadThree/256/10000     59002981 ns      4819786 ns          100
 BM_MultiThreadThree/320/10000     40525460 ns      5889576 ns          117
+
+BM_MultiThreadTwo/4/1000000    10984791439 ns     59339145 ns            1
+BM_MultiThreadTwo/8/1000000     5439683904 ns     58683609 ns            1
+BM_MultiThreadTwo/16/1000000    2247885529 ns     74152963 ns           11
+BM_MultiThreadTwo/24/1000000    1427016225 ns     80602437 ns           12
+BM_MultiThreadTwo/32/1000000    1074384116 ns     71447333 ns            9
+BM_MultiThreadTwo/64/1000000     616181140 ns     62649993 ns           11
+BM_MultiThreadTwo/96/1000000     493116493 ns     63177699 ns           11
+BM_MultiThreadTwo/128/1000000    440103043 ns     63735249 ns           11
+BM_MultiThreadTwo/256/1000000    402344611 ns     65972157 ns           11
+BM_MultiThreadTwo/320/1000000    401730530 ns     67988334 ns           10
+
+BM_MultiThreadThree/4/1000000  22951292970 ns     58274262 ns            1
+BM_MultiThreadThree/8/1000000   5864964838 ns     64410561 ns            1
+BM_MultiThreadThree/16/1000000  2273127116 ns     73009905 ns           10
+BM_MultiThreadThree/24/1000000  1472573452 ns     78480590 ns           12
+BM_MultiThreadThree/32/1000000  1085506992 ns     74733781 ns           11
 BM_MultiThreadThree/64/1000000   613088504 ns     62917152 ns           11
 BM_MultiThreadThree/96/1000000   493710274 ns     62985075 ns           11
 BM_MultiThreadThree/128/1000000  449409039 ns     63647684 ns           11
 BM_MultiThreadThree/256/1000000  416271716 ns     67062698 ns           11
-BM_MultiThreadFour/256/1000000   366349341 ns     67110515 ns           11
-
 BM_MultiThreadThree/320/1000000  412646388 ns     68171604 ns           10
+```
 
-Process finished with exit code 0
+Для графа из 10000 вершин самое быстрое время работы происходит на 32 потоках. Для графа из 1 000 000 вершин минимум времени достигается на 256 потоках. Видим, что новый подход не дал никакого заметного ускорения.
+
+## Шаг 9 - пробую снизить contention за счёт отказа от мьютексов
+
+Гранулярные блокировки не помогли снизить время доступа к очереди, поэтому пробую использовать lock-free очередь. В задании сказано, что нельзя использовать сторонние библиотеки, но я для начала хочу взять готовую lock-free очередь, чтобы просто понять, насколько существенный выигрыш она может дать. Поискал в Интернете и нашёл [MoodyCamel](https://github.com/cameron314/concurrentqueue). Автор пишет, что это "An industrial-strength lock-free queue for C++". Пробуем - [multi_thread_four_lf.cpp](./multi_thread_four_lf.cpp). 
+
+Запустил benchmark'и и сравнил производительность с наилучшей на данный момент реализацией - MultiThreadTwo:
 
 ```
+Benchmark                                Time             CPU   Iterations
+--------------------------------------------------------------------------
+BM_MultiThreadTwo/4/10000         90070249 ns       933818 ns          100
+BM_MultiThreadTwo/8/10000         46100368 ns      1240137 ns          100
+BM_MultiThreadTwo/16/10000        18799224 ns       723138 ns          934
+BM_MultiThreadTwo/24/10000        12292196 ns       838651 ns         1108
+BM_MultiThreadTwo/32/10000         9695942 ns       860625 ns          768
+BM_MultiThreadTwo/64/10000        44076507 ns      1254516 ns          100
+BM_MultiThreadTwo/96/10000        80962154 ns      1757622 ns          100
+BM_MultiThreadTwo/128/10000      112227618 ns      2349964 ns          100
+BM_MultiThreadTwo/256/10000      180947092 ns      4603333 ns          100
+BM_MultiThreadTwo/320/10000      189560039 ns      5676955 ns          123
+
+BM_MultiThreadFour/4/10000        93331815 ns      1075886 ns          100
+BM_MultiThreadFour/8/10000        47777764 ns      1167666 ns          100
+BM_MultiThreadFour/16/10000       23190697 ns      1312026 ns          989
+BM_MultiThreadFour/24/10000       16024090 ns      1443542 ns          806
+BM_MultiThreadFour/32/10000       10717162 ns       832750 ns          696
+BM_MultiThreadFour/64/10000        6579564 ns      1031378 ns          685
+BM_MultiThreadFour/96/10000        5548252 ns      1431726 ns          491
+BM_MultiThreadFour/128/10000       5488744 ns      1897883 ns          370
+BM_MultiThreadFour/256/10000       7587288 ns      3937570 ns          177
+BM_MultiThreadFour/320/10000       9021093 ns      5257087 ns          135
+
+BM_MultiThreadTwo/4/1000000    10984791439 ns     59339145 ns            1
+BM_MultiThreadTwo/8/1000000     5439683904 ns     58683609 ns            1
+BM_MultiThreadTwo/16/1000000    2247885529 ns     74152963 ns           11
+BM_MultiThreadTwo/24/1000000    1427016225 ns     80602437 ns           12
+BM_MultiThreadTwo/32/1000000    1074384116 ns     71447333 ns            9
+BM_MultiThreadTwo/64/1000000     605014737 ns     62570456 ns           11
+BM_MultiThreadTwo/96/1000000     480468077 ns     63009257 ns           11
+BM_MultiThreadTwo/128/1000000    427856664 ns     63553556 ns           11
+BM_MultiThreadTwo/256/1000000    385885706 ns     65443285 ns           11
+BM_MultiThreadTwo/320/1000000    380470911 ns     67240556 ns           11
+
+BM_MultiThreadFour/4/1000000   11033062765 ns     61306083 ns            1
+BM_MultiThreadFour/8/1000000    5481073865 ns     83530244 ns            1
+BM_MultiThreadFour/16/1000000   2288351761 ns     77042461 ns           12
+BM_MultiThreadFour/24/1000000   1482883760 ns     86840403 ns           11
+BM_MultiThreadFour/32/1000000   1075002681 ns     73552448 ns           11
+BM_MultiThreadFour/64/1000000    597630071 ns     76212218 ns           11
+BM_MultiThreadFour/96/1000000    458763186 ns     65961483 ns           11
+BM_MultiThreadFour/128/1000000   390270721 ns     64871787 ns            9
+BM_MultiThreadFour/256/1000000   311426226 ns     68358147 ns           11
+BM_MultiThreadFour/320/1000000   326435317 ns     68407463 ns           10
+```
+
+Для графа из 10000 вершин реализация с мьютексом быстрее всего работает на 32 потоках, реализация с lock-free очередью - на 128. При этом ускорение за счёт использования lock-free очереди составляет (9695942-5488744)/9695942=43% - очень внушительно. 
+
+Но наш целевой кейс - это граф из 1 000 000 вершин. На нём обе реализации достигают минимума времени на 256 потоках, при этом прирост от использования lock-free составляет (385885706-311426226)/385885706=19% - очень хороший результат.
+
+И вот здесь я решил остановиться. Если готовая lock-free очередь, в которую вложили немало человеко-часов работы, даёт выигрыш в 19%, то написанная мною с нуля (чтобы соответствовать заданию и не использовать сторонние библиотеки), вряд ли её догонит. К тому же lock-free всегда связано с большим количеством нетривиальных ошибок, поэтому создание своей очереди займёт у меня весьма приличное время. 
+
+## Направления для дальнейшего улучшения
+
+1. Используемая в финальной версии MoodyCamel - это general-purpose очередь. Стоит изучить её исходный код и поискать способы оптимизировать её под нашу конкретную задачу. 
+2. Во всех сравниваемых реализациях используется фиксированное число потоков. Можно поработать над реализацией, которая будет прикидывать требуемое количество потоков по размеру графа или динамически добавлять новые потоки, если существующих не хватает. 
+3. Сейчас функция суммирования использует sleep, чтобы однопоточная версия была медленнее. Отдельно стоит поисследовать, как будет вести себя время работы, если этот sleep убрать. 
 
 ## Как проводить измерения
 
@@ -348,5 +441,35 @@ BM_MultiThreadFour/96/1000000    458763186 ns     65961483 ns           11
 BM_MultiThreadFour/128/1000000   390270721 ns     64871787 ns            9
 BM_MultiThreadFour/256/1000000   311426226 ns     68358147 ns           11
 BM_MultiThreadFour/320/1000000   326435317 ns     68407463 ns           10
+BM_MultiThreadTwo/4/10000        90070249 ns       933818 ns          100
+BM_MultiThreadTwo/8/10000        46100368 ns      1240137 ns          100
+BM_MultiThreadTwo/16/10000       18799224 ns       723138 ns          934
+BM_MultiThreadTwo/24/10000       12292196 ns       838651 ns         1108
+BM_MultiThreadTwo/32/10000        9695942 ns       860625 ns          768
+BM_MultiThreadTwo/4/1000000    10984791439 ns     59339145 ns            1
+BM_MultiThreadTwo/8/1000000    5439683904 ns     58683609 ns            1
+BM_MultiThreadTwo/16/1000000   2247885529 ns     74152963 ns           11
+BM_MultiThreadTwo/24/1000000   1427016225 ns     80602437 ns           12
+BM_MultiThreadTwo/32/1000000   1074384116 ns     71447333 ns            9
+BM_MultiThreadThree/4/10000      91200565 ns      1012644 ns          100
+BM_MultiThreadThree/8/10000      46689517 ns       991916 ns          100
+BM_MultiThreadThree/16/10000     19436456 ns       799340 ns          854
+BM_MultiThreadThree/24/10000     14029025 ns      1142376 ns          990
+BM_MultiThreadThree/32/10000      9842682 ns       931137 ns          833
+BM_MultiThreadThree/4/1000000  22951292970 ns     58274262 ns            1
+BM_MultiThreadThree/8/1000000  5864964838 ns     64410561 ns            1
+BM_MultiThreadThree/16/1000000 2273127116 ns     73009905 ns           10
+BM_MultiThreadThree/24/1000000 1472573452 ns     78480590 ns           12
+BM_MultiThreadThree/32/1000000 1085506992 ns     74733781 ns           11
+BM_MultiThreadFour/4/10000       93331815 ns      1075886 ns          100
+BM_MultiThreadFour/8/10000       47777764 ns      1167666 ns          100
+BM_MultiThreadFour/16/10000      23190697 ns      1312026 ns          989
+BM_MultiThreadFour/24/10000      16024090 ns      1443542 ns          806
+BM_MultiThreadFour/32/10000      10717162 ns       832750 ns          696
+BM_MultiThreadFour/4/1000000   11033062765 ns     61306083 ns            1
+BM_MultiThreadFour/8/1000000   5481073865 ns     83530244 ns            1
+BM_MultiThreadFour/16/1000000  2288351761 ns     77042461 ns           12
+BM_MultiThreadFour/24/1000000  1482883760 ns     86840403 ns           11
+BM_MultiThreadFour/32/1000000  1075002681 ns     73552448 ns           11
 
 Process finished with exit code 0
